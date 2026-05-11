@@ -1,1 +1,5 @@
-alert icmp any any -> any any (msg:"ICMP Ping Detected"; sid:1000001; rev:1;)
+alert icmp any any -> any any (msg:"ICMP Ping Detected"; sid:100001; rev:1;)
+alert tcp any any -> any any (flags:S; msg:"Possible Nmap Scan"; sid:100002;)
+alert tcp any any -> any 23 (msg:"Telnet access"; sid:100003;)
+alert tcp any any -> any 21 (msg:"FTP connection"; sid:100004;)
+alert tcp any any -> any 80 (content:"/etc/passwd"; msg:"Possible directory traversal"; sid:100005;)
