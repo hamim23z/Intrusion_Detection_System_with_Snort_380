@@ -27,7 +27,54 @@ ipvar HOME_NET [192.168.56.0/24,10.0.2.0/24]
 ipvar EXTERNAL_NET !$HOME_NET
 ```
 
-Update `HOME_NET` if your Linux VM uses a different subnet.
+Update `HOME_NET` if your Linux VM uses a different subnet. For single-machine
+testing with no separate attacker VM, set both to `any`.
+
+## Setup by OS
+
+### Windows (WSL)
+
+1. Open WSL (Ubuntu). If not installed, run `wsl --install` in PowerShell.
+2. Clone the repo and enter the directory.
+3. Install Snort:
+```bash
+sudo apt update && sudo apt install snort -y
+```
+4. Copy support files:
+```bash
+sudo cp /etc/snort/*.config ./
+sudo cp /etc/snort/*.map ./
+sudo cp /etc/snort/threshold.conf ./
+```
+5. Find your interface name: `ip link show` (usually `eth0`)
+
+### Mac (Lima)
+
+1. Install Lima:
+```bash
+brew install lima
+limactl start --name=snort-lab template:ubuntu-lts
+```
+2. Enter the Linux VM:
+```bash
+limactl shell snort-lab
+```
+3. Clone the repo into the VM and enter the directory.
+4. Install Snort:
+```bash
+sudo apt update && sudo apt install snort -y
+```
+5. Copy support files:
+```bash
+sudo cp /etc/snort/*.config ./
+sudo cp /etc/snort/*.map ./
+sudo cp /etc/snort/threshold.conf ./
+```
+6. Interface name is `eth0`.
+
+### Linux VM (VirtualBox / UTM)
+
+Install Ubuntu, then follow the same steps as WSL above.
 
 ## Validate Configuration
 
