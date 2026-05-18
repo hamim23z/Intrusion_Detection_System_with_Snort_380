@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Snort IDS Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0a0e1a;
+      color: #c9d1d9;
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #0d1117;
+      border-bottom: 1px solid #21262d;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 {
+      font-size: 1.3rem;
+      color: #58a6ff;
+      letter-spacing: 1px;
+    }
+
+    #status {
+      font-size: 0.8rem;
+      color: #3fb950;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #status::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: #3fb950;
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .container { padding: 28px 32px; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-card .number {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #58a6ff;
+    }
+
+    .stat-card .label {
+      font-size: 0.78rem;
+      color: #8b949e;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-card.high .number { color: #f85149; }
+    .stat-card.med .number  { color: #e3b341; }
+    .stat-card.low .number  { color: #3fb950; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .card h2 {
+      font-size: 0.9rem;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+
+    canvas { max-height: 220px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    thead tr {
+      background: #161b22;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      color: #8b949e;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.4px;
+      border-bottom: 1px solid #21262d;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #161b22;
+      color: #c9d1d9;
+    }
+
+    tbody tr:hover { background: #161b22; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .p1 { background: #3d1f1f; color: #f85149; }
+    .p2 { background: #3d2f10; color: #e3b341; }
+    .p3 { background: #1a2f1a; color: #3fb950; }
+
+    .proto {
+      background: #1c2c40;
+      color: #58a6ff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-family: monospace;
+    }
+
+    .sid-badge {
+      background: #1c2c40;
+      color: #79c0ff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-family: monospace;
+    }
+
+    .msg { color: #e6edf3; font-weight: 500; }
+    .ip  { font-family: monospace; color: #8b949e; font-size: 0.78rem; }
+
+    #no-alerts {
+      text-align: center;
+      padding: 40px;
+      color: #8b949e;
+      display: none;
+    }
+
+    .simulator {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .atk-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 14px 20px;
+      cursor: pointer;
+      transition: all 0.15s;
+      min-width: 110px;
+      color: #c9d1d9;
+      font-size: 0.82rem;
+    }
+
+    .atk-btn:hover  { border-color: #58a6ff; background: #1c2c40; color: #58a6ff; }
+    .atk-btn.firing { border-color: #3fb950; background: #1a2f1a; color: #3fb950; }
+    .atk-btn.done   { border-color: #21262d; color: #8b949e; }
+
+    .atk-icon { font-size: 1.5rem; }
+    .atk-label { font-weight: 600; }
+    .atk-sid { font-size: 0.7rem; color: #8b949e; font-family: monospace; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🛡 Snort IDS Dashboard</h1>
+  <div id="status">Live Monitoring</div>
+</header>
+
+<div class="container">
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="number" id="total">0</div>
+      <div class="label">Total Alerts</div>
+    </div>
+    <div class="stat-card high">
+      <div class="number" id="p1">0</div>
+      <div class="label">Priority 1 (High)</div>
+    </div>
+    <div class="stat-card med">
+      <div class="number" id="p2">0</div>
+      <div class="label">Priority 2 (Medium)</div>
+    </div>
+    <div class="stat-card low">
+      <div class="number" id="p3">0</div>
+      <div class="label">Priority 3 (Low)</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Alerts by Type</h2>
+      <canvas id="chart"></canvas>
+    </div>
+    <div class="card">
+      <h2>Rule Summary</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>SID</th>
+            <th>Description</th>
+            <th>Priority</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="sid-badge">100001</span></td><td>ICMP Ping Detected</td><td><span class="badge p3">Low</span></td></tr>
+          <tr><td><span class="sid-badge">100002</span></td><td>TCP SYN Scan</td><td><span class="badge p2">Medium</span></td></tr>
+          <tr><td><span class="sid-badge">100003</span></td><td>Telnet Connection Attempt</td><td><span class="badge p1">High</span></td></tr>
+          <tr><td><span class="sid-badge">100004</span></td><td>FTP Connection Attempt</td><td><span class="badge p2">Medium</span></td></tr>
+          <tr><td><span class="sid-badge">100005</span></td><td>HTTP Directory Traversal</td><td><span class="badge p1">High</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <h2>Attack Simulator</h2>
+    <div class="simulator">
+      <button class="atk-btn" onclick="launch('icmp', this)">
+        <span class="atk-icon">📡</span>
+        <span class="atk-label">Ping Sweep</span>
+        <span class="atk-sid">SID 100001</span>
+      </button>
+      <button class="atk-btn" onclick="launch('syn', this)">
+        <span class="atk-icon">🔍</span>
+        <span class="atk-label">Port Scan</span>
+        <span class="atk-sid">SID 100002</span>
+      </button>
+      <button class="atk-btn" onclick="launch('telnet', this)">
+        <span class="atk-icon">💻</span>
+        <span class="atk-label">Telnet</span>
+        <span class="atk-sid">SID 100003</span>
+      </button>
+      <button class="atk-btn" onclick="launch('ftp', this)">
+        <span class="atk-icon">📁</span>
+        <span class="atk-label">FTP</span>
+        <span class="atk-sid">SID 100004</span>
+      </button>
+      <button class="atk-btn" onclick="launch('http', this)">
+        <span class="atk-icon">🌐</span>
+        <span class="atk-label">HTTP Traversal</span>
+        <span class="atk-sid">SID 100005</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Live Alert Feed</h2>
+    <div id="no-alerts">No alerts detected yet. Start Snort and generate test traffic.</div>
+    <table id="alert-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>SID</th>
+          <th>Message</th>
+          <th>Proto</th>
+          <th>Source</th>
+          <th>Destination</th>
+          <th>Priority</th>
+        </tr>
+      </thead>
+      <tbody id="alert-body"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  const SID_LABELS = {
+    '100001': 'ICMP Ping',
+    '100002': 'SYN Scan',
+    '100003': 'Telnet',
+    '100004': 'FTP',
+    '100005': 'HTTP Traversal',
+  };
+
+  const chart = new Chart(document.getElementById('chart'), {
+    type: 'bar',
+    data: {
+      labels: Object.values(SID_LABELS),
+      datasets: [{
+        label: 'Alerts',
+        data: [0, 0, 0, 0, 0],
+        backgroundColor: ['#1f6feb','#388bfd','#58a6ff','#79c0ff','#a5d6ff'],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
+        y: { ticks: { color: '#8b949e', precision: 0 }, grid: { color: '#21262d' } }
+      }
+    }
+  });
+
+  function priorityBadge(p) {
+    if (p === '1') return '<span class="badge p1">High</span>';
+    if (p === '2') return '<span class="badge p2">Med</span>';
+    return '<span class="badge p3">Low</span>';
+  }
+
+  async function refresh() {
+    const res = await fetch('/api/alerts');
+    const alerts = await res.json();
+
+    document.getElementById('total').textContent = alerts.length;
+    document.getElementById('p1').textContent = alerts.filter(a => a.priority === '1').length;
+    document.getElementById('p2').textContent = alerts.filter(a => a.priority === '2').length;
+    document.getElementById('p3').textContent = alerts.filter(a => a.priority === '3').length;
+
+    const counts = { '100001': 0, '100002': 0, '100003': 0, '100004': 0, '100005': 0 };
+    alerts.forEach(a => { if (counts[a.sid] !== undefined) counts[a.sid]++; });
+    chart.data.datasets[0].data = Object.values(counts);
+    chart.update();
+
+    const tbody = document.getElementById('alert-body');
+    const noAlerts = document.getElementById('no-alerts');
+
+    if (alerts.length === 0) {
+      noAlerts.style.display = 'block';
+      tbody.innerHTML = '';
+      return;
+    }
+
+    noAlerts.style.display = 'none';
+    tbody.innerHTML = alerts.slice(0, 100).map(a => `
+      <tr>
+        <td class="ip">${a.timestamp}</td>
+        <td><span class="sid-badge">${a.sid}</span></td>
+        <td class="msg">${SID_LABELS[a.sid] || a.message}</td>
+        <td><span class="proto">${a.protocol}</span></td>
+        <td class="ip">${a.src}</td>
+        <td class="ip">${a.dst}</td>
+        <td>${priorityBadge(a.priority)}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function launch(name, btn) {
+    btn.classList.add('firing');
+    btn.disabled = true;
+    await fetch(`/api/attack/${name}`, { method: 'POST' });
+    setTimeout(() => {
+      btn.classList.remove('firing');
+      btn.classList.add('done');
+      btn.disabled = false;
+      setTimeout(() => btn.classList.remove('done'), 3000);
+    }, 2000);
+  }
+
+  refresh();
+  setInterval(refresh, 3000);
+</script>
+
+</body>
+</html>
